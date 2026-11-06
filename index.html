@@ -15,7 +15,7 @@
 :root{
   --bg:#eef1f4; --surface:#ffffff; --surface-2:#e3e8ee; --fg:#17202b; --muted:#5b6878; --line:#d3dae3;
   --accent:#1f6f78; --accent-fg:#ffffff;
-  --c-game:#b86a12; --c-home:#3c7a3a; --c-tool:#2f5fa8; --c-dev:#6b4fa0; --c-note:#8a5a44;
+  --c-game:#b86a12; --c-home:#3c7a3a; --c-tool:#2f5fa8; --c-dev:#6b4fa0; --c-note:#8a5a44; --c-study:#a8325e;
   --f-display:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
   --f-body:"Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
   --f-mono:"JetBrains Mono", ui-monospace, Consolas, monospace;
@@ -24,11 +24,11 @@
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
   --bg:#11161d; --surface:#19212b; --surface-2:#222c38; --fg:#e6ebf1; --muted:#93a0b0; --line:#2b3644;
   --accent:#4fb3bb; --accent-fg:#0d1418;
-  --c-game:#e7a14f; --c-home:#7cc278; --c-tool:#7ea6eb; --c-dev:#b49bea; --c-note:#d39d82; color-scheme:dark}}
+  --c-game:#e7a14f; --c-home:#7cc278; --c-tool:#7ea6eb; --c-dev:#b49bea; --c-note:#d39d82; --c-study:#ec8db0; color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#11161d; --surface:#19212b; --surface-2:#222c38; --fg:#e6ebf1; --muted:#93a0b0; --line:#2b3644;
   --accent:#4fb3bb; --accent-fg:#0d1418;
-  --c-game:#e7a14f; --c-home:#7cc278; --c-tool:#7ea6eb; --c-dev:#b49bea; --c-note:#d39d82; color-scheme:dark}
+  --c-game:#e7a14f; --c-home:#7cc278; --c-tool:#7ea6eb; --c-dev:#b49bea; --c-note:#d39d82; --c-study:#ec8db0; color-scheme:dark}
 
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.45}
@@ -77,6 +77,21 @@ h2{font-family:var(--f-display);font-weight:700;font-size:20px;margin:0}
 .none{color:var(--muted)}
 @media (max-width:640px){.add{grid-template-columns:1fr}}
 @media (prefers-reduced-motion:reduce){.tile{transition:none}.tile:hover{transform:none}}
+
+/* Anstehend (Google Kalender, eingebettet) */
+.ag-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.ag-head .spacer{flex:1}
+.ag-head a.btn{text-decoration:none}
+.ag-frame{width:100%;height:420px;border:1px solid var(--line);border-radius:var(--r);background:#fff;display:block}
+.ag-msg{background:var(--surface-2);border-radius:var(--r);padding:14px;font-size:14px;display:flex;flex-direction:column;gap:10px}
+.ag-row{display:flex;gap:8px;flex-wrap:wrap}
+.ag-row input{flex:1 1 220px}
+.ag-form{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) auto auto;gap:8px;background:var(--surface-2);padding:12px;border-radius:var(--r)}
+.ag-form input,.ag-msg input{font:inherit;padding:9px 10px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--fg);min-width:0;width:100%}
+.ag-form input:focus,.ag-msg input:focus{outline:2px solid var(--accent);outline-offset:1px}
+.ag-form .note,.ag-hint{grid-column:1/-1;font-size:13px;color:var(--muted);margin:0}
+.linkbtn{font:inherit;font-size:13px;color:var(--muted);background:none;border:0;padding:0;cursor:pointer;text-decoration:underline}
+@media (max-width:760px){.ag-form{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.ag-form #ag-title{grid-column:1/-1}.ag-frame{height:360px}}
 </style>
 </head>
 <body>
@@ -92,6 +107,32 @@ h2{font-family:var(--f-display);font-weight:700;font-size:20px;margin:0}
       <button class="btn" id="theme" type="button">Dunkel</button>
     </div>
   </header>
+
+  <section id="agenda" aria-labelledby="ag-h">
+    <div class="ag-head">
+      <h2 id="ag-h">Anstehend</h2>
+      <span class="spacer"></span>
+      <a class="btn" id="ag-open" href="https://calendar.google.com/calendar/r" target="_blank" rel="noopener">Google Kalender ↗</a>
+      <button class="btn" type="button" id="ag-add">+ Termin</button>
+    </div>
+    <form class="ag-form" id="ag-form" hidden>
+      <input id="ag-title" placeholder="Was? z. B. Zahnarzt" required aria-label="Titel">
+      <input id="ag-date" type="date" required aria-label="Datum">
+      <input id="ag-from" type="time" aria-label="Von (optional)" title="Von (optional)">
+      <input id="ag-to" type="time" aria-label="Bis (optional)" title="Bis (optional)">
+      <button class="btn primary" type="submit">Weiter zu Google</button>
+      <button class="btn" type="button" id="ag-cancel">Abbrechen</button>
+      <p class="note">Öffnet Google Kalender mit dem ausgefüllten Termin, dort nur noch auf Speichern tippen. Ohne Uhrzeit wird es ganztägig.</p>
+    </form>
+    <div class="ag-msg" id="ag-setup" hidden>
+      <span>Trag einmal die Gmail-Adresse deines Kalenders ein, dann erscheinen hier deine nächsten Termine. Sie wird nur in diesem Browser gespeichert.</span>
+      <form class="ag-row" id="ag-idform"><input id="ag-id" type="email" placeholder="name@gmail.com" required aria-label="Gmail-Adresse"><button class="btn primary" type="submit">Anzeigen</button></form>
+    </div>
+    <div id="ag-view" hidden>
+      <iframe class="ag-frame" id="ag-frame" title="Google Kalender: anstehende Termine" loading="lazy"></iframe>
+      <p class="ag-hint">Leer oder „Anmelden“? Dann bist du in diesem Browser nicht bei Google angemeldet oder der Browser blockiert die Anmeldung im eingebetteten Fenster (oft bei Safari). Über „Google Kalender ↗“ kommst du immer hin. <button class="linkbtn" type="button" id="ag-reset">Adresse ändern</button></p>
+    </div>
+  </section>
 
   <main id="groups" style="display:flex;flex-direction:column;gap:32px"></main>
 
@@ -110,6 +151,11 @@ h2{font-family:var(--f-display);font-weight:700;font-size:20px;margin:0}
 
 <script>
 const GROUPS=[
+ {title:"Studium",cat:"--c-study",items:[
+  {n:"Studium-Cockpit",d:"Kurse, Klausuren, Lernplan, Fokus-Timer, Parkplatz",u:"https://claude.ai/artifact/VYtJnzSkFxG12MUj3ozAFg",m:"SC",i:"https://claude.ai/favicon.ico"},
+  {n:"Prüfungstermine WiSe 2026/27",d:"Alle Klausuren mit Räumen und Fristen",u:"https://claude.ai/artifact/NbLWbqZefJ5Qc26LHpAW5K",m:"PR",i:"https://claude.ai/favicon.ico"},
+  {n:"Masterplan BWL",d:"Studienplanung bis zum Abschluss",u:"https://claude.ai/artifact/5394V7u4BvivEViwcJtYSL",m:"MP",i:"https://claude.ai/favicon.ico"}
+ ]},
  {title:"Spiele & Challenges",cat:"--c-game",items:[
   {n:"Overwatch Challenge Hub",d:"Ultimate Hunt, Glücksrad, Hero Ladder, Bingo, Statistiken",u:"https://overwatchchallengehub.netlify.app",m:"OW",i:"icons/overwatch.png"},
   {n:"Game Hub",d:"Scopa, Asse Raus und Tempora",u:"https://thisksad.github.io/Game-Hub/",m:"GH",i:"icons/gamehub.png"},
@@ -219,6 +265,40 @@ $("#theme").addEventListener("click",()=>{const n=isDark()?"light":"dark";root.s
 setLabel();
 
 renderGroups();renderOwn();
+
+/* Anstehend: eingebetteter Google Kalender + Termin anlegen */
+(()=>{
+const pad=n=>String(n).padStart(2,"0");
+const tz=(()=>{try{return Intl.DateTimeFormat().resolvedOptions().timeZone||"Europe/Berlin"}catch(e){return "Europe/Berlin"}})();
+function show(){
+  const id=store.get("cal-id","");
+  $("#ag-setup").hidden=!!id;$("#ag-view").hidden=!id;
+  if(id){
+    const dark=root.getAttribute("data-theme")==="dark"||(!root.getAttribute("data-theme")&&matchMedia("(prefers-color-scheme: dark)").matches);
+    const q=new URLSearchParams({src:id,ctz:tz,mode:"AGENDA",showTitle:"0",showPrint:"0",showTabs:"0",showCalendars:"0",showTz:"0",hl:"de"});
+    if(dark)q.set("bgcolor","#19212b");
+    $("#ag-frame").src="https://calendar.google.com/calendar/embed?"+q;
+  }
+}
+$("#ag-idform").addEventListener("submit",e=>{e.preventDefault();const v=$("#ag-id").value.trim();if(v){store.set("cal-id",v);show()}});
+$("#ag-reset").addEventListener("click",()=>{$("#ag-id").value=store.get("cal-id","");store.set("cal-id","");show();$("#ag-id").focus()});
+const form=$("#ag-form");
+$("#ag-add").addEventListener("click",()=>{form.hidden=!form.hidden;if(!form.hidden){if(!$("#ag-date").value){const d=new Date();$("#ag-date").value=d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate())}$("#ag-title").focus()}});
+$("#ag-cancel").addEventListener("click",()=>{form.hidden=true});
+form.addEventListener("submit",e=>{
+  e.preventDefault();
+  const title=$("#ag-title").value.trim(),date=$("#ag-date").value.replace(/-/g,""),from=$("#ag-from").value;let to=$("#ag-to").value;
+  if(!title||!date)return;
+  let dates;
+  if(from){if(!to||to<=from){const[h,m]=from.split(":").map(Number);const v=Math.min(1439,h*60+m+60);to=pad(Math.floor(v/60))+":"+pad(v%60)}dates=date+"T"+from.replace(":","")+"00/"+date+"T"+to.replace(":","")+"00"}
+  else{const d=new Date(+date.slice(0,4),+date.slice(4,6)-1,+date.slice(6)+1);dates=date+"/"+d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())}
+  const q=new URLSearchParams({action:"TEMPLATE",text:title,dates,ctz:tz});
+  window.open("https://calendar.google.com/calendar/render?"+q,"_blank","noopener");
+  form.reset();form.hidden=true;
+});
+$("#theme").addEventListener("click",()=>setTimeout(show,0));
+show();
+})();
 </script>
 </body>
 </html>
