@@ -7,6 +7,7 @@
 <link rel="icon" type="image/svg+xml" href="../icons/favicon.svg">
 <link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
 <style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}[hidden]{display:none!important}</style>
+<script src="../gcal.js"></script>
 </head>
 <body>
 <title>Studium-Cockpit</title>
@@ -191,7 +192,7 @@ input[type=time]{border:1px solid var(--line);background:var(--bg);border-radius
 <div class="wrap" lang="de">
   <header class="top">
     <div>
-      <div class="row" style="margin-bottom:10px"><a class="back" href="https://thisksad.github.io/Dashboard/" target="_top" style="margin:0">← Startseite</a><button class="btn small" type="button" id="logout">Abmelden</button></div>
+      <div class="row" style="margin-bottom:10px"><a class="back" href="https://thisksad.github.io/Dashboard/" target="_top" style="margin:0">← Startseite</a><button class="btn small" type="button" id="logout">Abmelden</button><button class="btn small primary" type="button" id="gconn" hidden>Google Kalender verbinden</button></div>
       <div class="eyebrow">M.Sc. BWL · RWTH Aachen · WiSe 2026/27</div>
       <h1>Studium-Cockpit</h1>
     </div>
@@ -604,10 +605,30 @@ $("#taskForm").addEventListener("submit", async e=>{ e.preventDefault();
 // ---------- Google Kalender ----------
 const GC = "Google Calendar", TZ = (()=>{ try{ return Intl.DateTimeFormat().resolvedOptions().timeZone || "Europe/Berlin"; }catch{ return "Europe/Berlin"; } })();
 let mcp = null;
-(async()=>{ try{ mcp = await window.claude?.use?.("mcp"); }catch{ mcp = null; } render(); })();
+// Im Browser übernimmt gcal.js (direkte Google-Anmeldung) die Rolle des Connectors
+const webCal = { async callTool(server, tool, input){
+  const G = window.GCal;
+  if (tool==="create_event") return { payload: await G.create(input) };
+  if (tool==="update_event"){ const { eventId, notificationLevel, ...rest } = input; return { payload: await G.update(eventId, rest) }; }
+  if (tool==="delete_event") return { payload: await G.remove(input.eventId) };
+  throw Object.assign(new Error("unknown"), { code:"bad_request" });
+} };
+function gconnUI(){
+  const b = $("#gconn"); if (!b) return;
+  const st = !IN_CLAUDE && window.GCal ? window.GCal.state() : "n/a";
+  b.hidden = st==="connected" || st==="n/a";
+  b.textContent = st==="expired" ? "Google neu verbinden" : "Google Kalender verbinden";
+}
+(async()=>{
+  if (!IN_CLAUDE){
+    if (window.GCal){ mcp = webCal; window.GCal.onChange(gconnUI); }
+    gconnUI(); render(); return;
+  }
+  try{ mcp = await window.claude?.use?.("mcp"); }catch{ mcp = null; } render();
+})();
 function gcErr(e){
   switch(e?.code){
-    case "needs_reauth": return "Google Kalender muss neu verbunden werden: claude.ai → Einstellungen → Connectors.";
+    case "needs_reauth": return IN_CLAUDE ? "Google Kalender muss neu verbunden werden: claude.ai → Einstellungen → Connectors." : "Die Google-Verbindung ist abgelaufen. Tippe oben auf „Google neu verbinden“ und versuch es dann nochmal.";
     case "server_not_connected": case "selection_required": return "Google Kalender ist nicht verbunden. Füge ihn in claude.ai unter Einstellungen → Connectors hinzu.";
     case "not_in_manifest": case "approval_required": case "consent_required": return "Der Zugriff auf Google Kalender wurde für diese Seite nicht erlaubt. Erlaube ihn über das Berechtigungsmenü der Seite.";
     case "blocked_by_policy": return "Google Kalender ist für dein Konto gesperrt.";
@@ -831,7 +852,8 @@ $("#logout").addEventListener("click", async ()=>{ try{ await web.rpc("sc_logout
     if (!viaConnector.mcp){ status("Speichern ist hier gerade nicht verfügbar. Änderungen gehen beim Neuladen verloren."); return; }
     backend = viaConnector; startSync();
   } else {
-    $("#taskGWrap").hidden = true;
+    if (!window.GCal) $("#taskGWrap").hidden = true;
+    $("#gconn").addEventListener("click", async ()=>{ try { await window.GCal.connect(); status(""); render(); } catch { status("Die Google-Anmeldung wurde abgebrochen. Erlaube Pop-ups für diese Seite und versuch es nochmal."); } gconnUI(); });
     if (web.token()){ backend = web; startSync(); } else showLogin();
   }
 })();

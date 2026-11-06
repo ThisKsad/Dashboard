@@ -32,7 +32,7 @@
 
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.45}
-.wrap{max-width:1120px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:28px 56px;display:flex;flex-direction:column;gap:32px}
+.wrap{max-width:1360px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:28px 56px;display:flex;flex-direction:column;gap:32px}
 
 header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:20px}
 .hello{display:flex;flex-direction:column;gap:2px;min-width:0}
@@ -78,20 +78,59 @@ h2{font-family:var(--f-display);font-weight:700;font-size:20px;margin:0}
 @media (max-width:640px){.add{grid-template-columns:1fr}}
 @media (prefers-reduced-motion:reduce){.tile{transition:none}.tile:hover{transform:none}}
 
-/* Anstehend (Google Kalender, eingebettet) */
+/* Anstehend (Google Kalender) */
 .ag-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .ag-head .spacer{flex:1}
 .ag-head a.btn{text-decoration:none}
-.ag-frame{width:100%;height:420px;border:1px solid var(--line);border-radius:var(--r);background:#fff;display:block}
-.ag-msg{background:var(--surface-2);border-radius:var(--r);padding:14px;font-size:14px;display:flex;flex-direction:column;gap:10px}
-.ag-row{display:flex;gap:8px;flex-wrap:wrap}
-.ag-row input{flex:1 1 220px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden}
+.seg button{font:inherit;font-size:13px;font-weight:700;border:0;background:var(--surface);color:var(--fg);padding:6px 11px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-fg)}
+.ag-days{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
+.ag-day{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.ag-day.today{border-color:var(--accent);box-shadow:inset 0 3px 0 var(--accent)}
+.ag-day h3{margin:0;font-family:var(--f-display);font-size:15px;display:flex;justify-content:space-between;gap:8px}
+.ag-day h3 span{font-family:var(--f-mono);font-size:12px;color:var(--muted);font-weight:400}
+.ev{display:grid;grid-template-columns:64px minmax(0,1fr);gap:8px;color:inherit;text-decoration:none;border-radius:8px;padding:4px 6px;margin:0 -6px}
+.ev:hover{background:var(--surface-2)}
+.ev:focus-visible{outline:2px solid var(--accent)}
+.ev .t{font-family:var(--f-mono);font-size:12.5px;color:var(--accent);font-variant-numeric:tabular-nums;padding-top:1px}
+.ev .t.all{color:var(--muted);font-size:10.5px}
+.ev .s{font-weight:700;font-size:14px;overflow-wrap:anywhere}
+.ev .l{display:block;font-weight:400;color:var(--muted);font-size:12.5px}
+.ev.past{opacity:.5}
+.ag-msg{background:var(--surface-2);border-radius:var(--r);padding:12px 14px;font-size:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.ag-meta{font-family:var(--f-mono);font-size:12px;color:var(--muted)}
 .ag-form{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) auto auto;gap:8px;background:var(--surface-2);padding:12px;border-radius:var(--r)}
-.ag-form input,.ag-msg input{font:inherit;padding:9px 10px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--fg);min-width:0;width:100%}
-.ag-form input:focus,.ag-msg input:focus{outline:2px solid var(--accent);outline-offset:1px}
-.ag-form .note,.ag-hint{grid-column:1/-1;font-size:13px;color:var(--muted);margin:0}
-.linkbtn{font:inherit;font-size:13px;color:var(--muted);background:none;border:0;padding:0;cursor:pointer;text-decoration:underline}
-@media (max-width:760px){.ag-form{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.ag-form #ag-title{grid-column:1/-1}.ag-frame{height:360px}}
+.ag-form input{font:inherit;padding:9px 10px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--fg);min-width:0;width:100%}
+.ag-form input:focus{outline:2px solid var(--accent);outline-offset:1px}
+.ag-form .note{grid-column:1/-1;font-size:13px;color:var(--muted);margin:0}
+.linkbtn{font:inherit;font-size:12px;color:var(--muted);background:none;border:0;padding:0;cursor:pointer;text-decoration:underline}
+@media (max-width:760px){.ag-form{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.ag-form #ag-title{grid-column:1/-1}}
+
+/* Seitenspalte für den Kalender */
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:32px;align-items:start}
+.maincol{display:flex;flex-direction:column;gap:32px;min-width:0}
+#agenda{grid-column:2;grid-row:1;position:sticky;top:calc(16px + env(safe-area-inset-top,0px));display:flex;flex-direction:column;gap:12px;max-height:calc(100vh - 32px);overflow:auto;padding:16px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);min-width:0}
+.maincol{grid-column:1;grid-row:1}
+#agenda .ag-days{grid-template-columns:minmax(0,1fr)}
+#agenda .ag-day{padding:0;border:0;border-radius:0;background:none;box-shadow:none;gap:6px}
+#agenda .ag-day+.ag-day{border-top:1px solid var(--line);padding-top:10px}
+#agenda .ag-day.today h3{color:var(--accent)}
+#agenda .ag-form{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+#agenda .ag-form #ag-title,#agenda .ag-form #ag-date{grid-column:1/-1}
+#agenda .ag-head .spacer{display:none}
+#agenda .ag-head h2{flex:1}
+#agenda .ag-tools{display:flex;gap:6px;flex-wrap:wrap;width:100%}
+#agenda .ag-tools .btn{padding:6px 11px;font-size:13px}
+@media (max-width:980px){
+  .layout{grid-template-columns:minmax(0,1fr)}
+  #agenda,.maincol{grid-column:1;grid-row:auto}
+  #agenda{position:static;max-height:none;padding:0;background:none;border:0}
+  #agenda .ag-days{grid-template-columns:repeat(auto-fill,minmax(230px,1fr))}
+  #agenda .ag-day{padding:12px;border:1px solid var(--line);background:var(--surface);border-radius:var(--r)}
+  #agenda .ag-day+.ag-day{padding-top:12px;border-top:1px solid var(--line)}
+}
+
 </style>
 </head>
 <body>
@@ -108,31 +147,33 @@ h2{font-family:var(--f-display);font-weight:700;font-size:20px;margin:0}
     </div>
   </header>
 
-  <section id="agenda" aria-labelledby="ag-h">
+  <div class="layout">
+  <aside id="agenda" aria-labelledby="ag-h">
     <div class="ag-head">
-      <h2 id="ag-h">Anstehend</h2>
+      <h2 id="ag-h">Anstehend</h2><span class="ag-meta" id="ag-meta"></span>
       <span class="spacer"></span>
-      <a class="btn" id="ag-open" href="https://calendar.google.com/calendar/r" target="_blank" rel="noopener">Google Kalender ↗</a>
+      <div class="ag-tools">
+      <div class="seg" role="group" aria-label="Zeitraum">
+        <button type="button" data-days="7">7 Tage</button><button type="button" data-days="14">14 Tage</button><button type="button" data-days="30">30 Tage</button>
+      </div>
+      <a class="btn" href="https://calendar.google.com/calendar/r" target="_blank" rel="noopener">Google Kalender ↗</a>
       <button class="btn" type="button" id="ag-add">+ Termin</button>
+      </div>
     </div>
     <form class="ag-form" id="ag-form" hidden>
       <input id="ag-title" placeholder="Was? z. B. Zahnarzt" required aria-label="Titel">
       <input id="ag-date" type="date" required aria-label="Datum">
       <input id="ag-from" type="time" aria-label="Von (optional)" title="Von (optional)">
       <input id="ag-to" type="time" aria-label="Bis (optional)" title="Bis (optional)">
-      <button class="btn primary" type="submit">Weiter zu Google</button>
+      <button class="btn primary" type="submit" id="ag-save">Eintragen</button>
       <button class="btn" type="button" id="ag-cancel">Abbrechen</button>
-      <p class="note">Öffnet Google Kalender mit dem ausgefüllten Termin, dort nur noch auf Speichern tippen. Ohne Uhrzeit wird es ganztägig.</p>
+      <p class="note" id="ag-note">Ohne Uhrzeit wird es ein ganztägiger Termin. Er landet in deinem Google Kalender und damit auch im Apple Kalender.</p>
     </form>
-    <div class="ag-msg" id="ag-setup" hidden>
-      <span>Trag einmal die Gmail-Adresse deines Kalenders ein, dann erscheinen hier deine nächsten Termine. Sie wird nur in diesem Browser gespeichert.</span>
-      <form class="ag-row" id="ag-idform"><input id="ag-id" type="email" placeholder="name@gmail.com" required aria-label="Gmail-Adresse"><button class="btn primary" type="submit">Anzeigen</button></form>
-    </div>
-    <div id="ag-view" hidden>
-      <iframe class="ag-frame" id="ag-frame" title="Google Kalender: anstehende Termine" loading="lazy"></iframe>
-      <p class="ag-hint">Leer oder „Anmelden“? Dann bist du in diesem Browser nicht bei Google angemeldet oder der Browser blockiert die Anmeldung im eingebetteten Fenster (oft bei Safari). Über „Google Kalender ↗“ kommst du immer hin. <button class="linkbtn" type="button" id="ag-reset">Adresse ändern</button></p>
-    </div>
-  </section>
+    <div class="ag-msg" id="ag-msg" hidden></div>
+    <div class="ag-days" id="ag-days"></div>
+  </aside>
+
+  <div class="maincol">
 
   <main id="groups" style="display:flex;flex-direction:column;gap:32px"></main>
 
@@ -147,8 +188,11 @@ h2{font-family:var(--f-display);font-weight:700;font-size:20px;margin:0}
     </form>
     <p class="hint">Eigene Links werden nur in diesem Browser gespeichert. Sag mir Bescheid, wenn ein Link fest auf die Seite soll.</p>
   </section>
+  </div>
+  </div>
 </div>
 
+<script src="gcal.js"></script>
 <script>
 const GROUPS=[
  {title:"Studium",cat:"--c-study",items:[
@@ -266,38 +310,94 @@ setLabel();
 
 renderGroups();renderOwn();
 
-/* Anstehend: eingebetteter Google Kalender + Termin anlegen */
+/* Anstehend: Google Kalender über gcal.js */
 (()=>{
+const TZ=(()=>{try{return Intl.DateTimeFormat().resolvedOptions().timeZone||"Europe/Berlin"}catch(e){return "Europe/Berlin"}})();
 const pad=n=>String(n).padStart(2,"0");
-const tz=(()=>{try{return Intl.DateTimeFormat().resolvedOptions().timeZone||"Europe/Berlin"}catch(e){return "Europe/Berlin"}})();
-function show(){
-  const id=store.get("cal-id","");
-  $("#ag-setup").hidden=!!id;$("#ag-view").hidden=!id;
-  if(id){
-    const dark=root.getAttribute("data-theme")==="dark"||(!root.getAttribute("data-theme")&&matchMedia("(prefers-color-scheme: dark)").matches);
-    const q=new URLSearchParams({src:id,ctz:tz,mode:"AGENDA",showTitle:"0",showPrint:"0",showTabs:"0",showCalendars:"0",showTz:"0",hl:"de"});
-    if(dark)q.set("bgcolor","#19212b");
-    $("#ag-frame").src="https://calendar.google.com/calendar/embed?"+q;
+const ymd=d=>d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
+const parseYmd=s=>{const[y,m,d]=s.split("-").map(Number);return new Date(y,m-1,d)};
+const addD=(d,n)=>{const x=new Date(d);x.setDate(x.getDate()+n);return x};
+const today0=()=>{const d=new Date();d.setHours(0,0,0,0);return d};
+const hm=d=>pad(d.getHours())+":"+pad(d.getMinutes());
+const WD=["So","Mo","Di","Mi","Do","Fr","Sa"];
+let events=null,days=store.get("ag-days",14),stamp=null,busy=false;
+const G=window.GCal;
+function el(t,a={},...k){const e=document.createElement(t);for(const[n,v]of Object.entries(a)){if(n==="class")e.className=v;else if(n.startsWith("on"))e.addEventListener(n.slice(2),v);else if(v!=null&&v!==false)e.setAttribute(n,v===true?"":v)}for(const c of k.flat())if(c!=null&&c!==false)e.append(c.nodeType?c:document.createTextNode(c));return e}
+function msg(text,btn){const m=$("#ag-msg");if(!text){m.hidden=true;return}m.replaceChildren(el("span",{},text),btn||null);m.hidden=false}
+const connectBtn=label=>el("button",{class:"btn primary",type:"button",onclick:async()=>{try{await G.connect();load()}catch(e){msg("Die Google-Anmeldung wurde abgebrochen. Erlaube Pop-ups für diese Seite und versuch es nochmal.",connectBtn(label))}}},label);
+const evStart=e=>e.start&&e.start.dateTime?new Date(e.start.dateTime):e.start&&e.start.date?parseYmd(e.start.date):null;
+const evEnd=e=>e.end&&e.end.dateTime?new Date(e.end.dateTime):e.end&&e.end.date?parseYmd(e.end.date):null;
+const declined=e=>(e.attendees||[]).some(a=>a.self&&a.responseStatus==="declined");
+function render(){
+  const box=$("#ag-days");
+  document.querySelectorAll("#agenda .seg button").forEach(b=>b.setAttribute("aria-pressed",String(+b.dataset.days===days)));
+  if(!events){box.replaceChildren();return}
+  const t0=today0(),end=addD(t0,days),now=new Date(),byDay=new Map();
+  for(const e of events){
+    if(e.status==="cancelled"||declined(e))continue;
+    const s=evStart(e),en=evEnd(e);if(!s)continue;
+    const allDay=!(e.start&&e.start.dateTime);
+    let d=new Date(Math.max(s,t0));d.setHours(0,0,0,0);
+    const last=allDay?addD(en||addD(s,1),-1):new Date(en||s);
+    for(;d<=last&&d<end;d=addD(d,1)){const k=ymd(d);if(!byDay.has(k))byDay.set(k,[]);byDay.get(k).push({e,s,en,allDay,past:!allDay&&en&&en<now});if(!allDay)break}
   }
+  const keys=[...byDay.keys()].sort();
+  if(!keys.length){box.replaceChildren(el("p",{class:"empty"},`Keine Termine in den nächsten ${days} Tagen. Mit „+ Termin“ trägst du einen ein.`));return}
+  const tk=ymd(t0),mk=ymd(addD(t0,1));
+  box.replaceChildren(...keys.map(k=>{
+    const d=parseYmd(k),list=byDay.get(k).sort((a,b)=>(b.allDay-a.allDay)||(a.s-b.s));
+    const name=k===tk?"Heute":k===mk?"Morgen":WD[d.getDay()]+", "+pad(d.getDate())+"."+pad(d.getMonth()+1)+".";
+    return el("div",{class:"ag-day"+(k===tk?" today":"")},
+      el("h3",{},name,el("span",{},k===tk||k===mk?WD[d.getDay()]+" "+pad(d.getDate())+"."+pad(d.getMonth()+1)+".":"")),
+      list.map(({e,s,en,allDay,past})=>el("a",{class:"ev"+(past?" past":""),href:e.htmlLink||"https://calendar.google.com",target:"_blank",rel:"noopener",title:"In Google Kalender öffnen"},
+        el("span",{class:"t"+(allDay?" all":"")},allDay?"ganztägig":hm(s)),
+        el("span",{class:"s"},e.summary||"(ohne Titel)",(!allDay&&en)||e.location?el("span",{class:"l"},[!allDay&&en?"bis "+hm(en):null,e.location||null].filter(Boolean).join(" · ")):null))));
+  }));
 }
-$("#ag-idform").addEventListener("submit",e=>{e.preventDefault();const v=$("#ag-id").value.trim();if(v){store.set("cal-id",v);show()}});
-$("#ag-reset").addEventListener("click",()=>{$("#ag-id").value=store.get("cal-id","");store.set("cal-id","");show();$("#ag-id").focus()});
+function meta(){$("#ag-meta").replaceChildren(stamp?"Stand "+hm(new Date(stamp))+" · ":"",G&&G.state()!=="off"?el("button",{class:"linkbtn",type:"button",onclick:()=>{G.disconnect();events=null;render();meta();showState()}},"Google trennen"):"")}
+function showState(){
+  if(!G){msg("Der Kalender konnte nicht geladen werden.");return}
+  const st=G.state();
+  $("#ag-add").hidden=st==="off";
+  if(st==="connected")return;
+  if(st==="expired")msg("Die Google-Verbindung ist abgelaufen.",connectBtn("Neu verbinden"));
+  else msg("Verbinde deinen Google Kalender, dann siehst du hier deine nächsten Termine.",connectBtn("Mit Google verbinden"));
+}
+async function load(){
+  if(!G||G.state()!=="connected"){showState();return}
+  if(busy)return;busy=true;
+  const t0=today0();
+  try{
+    const r=await G.list({timeMin:t0.toISOString(),timeMax:addD(t0,days).toISOString(),timeZone:TZ});
+    events=r.items||[];stamp=Date.now();msg(null);render();meta();
+  }catch(e){
+    if(e.code==="needs_reauth"){showState();return}
+    msg(events?"Google Kalender gerade nicht erreichbar, du siehst den letzten Stand.":"Google Kalender gerade nicht erreichbar.",el("button",{class:"btn",type:"button",onclick:load},"Neu laden"));
+  }finally{busy=false}
+}
+document.querySelectorAll("#agenda .seg button").forEach(b=>b.addEventListener("click",()=>{days=+b.dataset.days;store.set("ag-days",days);render();load()}));
 const form=$("#ag-form");
-$("#ag-add").addEventListener("click",()=>{form.hidden=!form.hidden;if(!form.hidden){if(!$("#ag-date").value){const d=new Date();$("#ag-date").value=d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate())}$("#ag-title").focus()}});
+$("#ag-add").addEventListener("click",()=>{form.hidden=!form.hidden;if(!form.hidden){if(!$("#ag-date").value)$("#ag-date").value=ymd(today0());$("#ag-title").focus()}});
 $("#ag-cancel").addEventListener("click",()=>{form.hidden=true});
-form.addEventListener("submit",e=>{
+form.addEventListener("submit",async e=>{
   e.preventDefault();
-  const title=$("#ag-title").value.trim(),date=$("#ag-date").value.replace(/-/g,""),from=$("#ag-from").value;let to=$("#ag-to").value;
-  if(!title||!date)return;
-  let dates;
-  if(from){if(!to||to<=from){const[h,m]=from.split(":").map(Number);const v=Math.min(1439,h*60+m+60);to=pad(Math.floor(v/60))+":"+pad(v%60)}dates=date+"T"+from.replace(":","")+"00/"+date+"T"+to.replace(":","")+"00"}
-  else{const d=new Date(+date.slice(0,4),+date.slice(4,6)-1,+date.slice(6)+1);dates=date+"/"+d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())}
-  const q=new URLSearchParams({action:"TEMPLATE",text:title,dates,ctz:tz});
-  window.open("https://calendar.google.com/calendar/render?"+q,"_blank","noopener");
-  form.reset();form.hidden=true;
+  const title=$("#ag-title").value.trim(),date=$("#ag-date").value,from=$("#ag-from").value;let to=$("#ag-to").value;if(!title||!date)return;
+  const inp={summary:title,timeZone:TZ};
+  if(from){if(!to||to<=from){const[h,m]=from.split(":").map(Number);const v=Math.min(1439,h*60+m+60);to=pad(Math.floor(v/60))+":"+pad(v%60)}inp.startTime=date+"T"+from+":00";inp.endTime=date+"T"+to+":00"}
+  else{inp.allDay=true;inp.startTime=date+"T00:00:00";inp.endTime=ymd(addD(parseYmd(date),1))+"T00:00:00"}
+  const btn=$("#ag-save");btn.disabled=true;btn.textContent="Trägt ein…";
+  try{
+    if(G.state()!=="connected")await G.connect();
+    await G.create(inp);
+    form.reset();form.hidden=true;load();
+  }catch(err){
+    $("#ag-note").textContent=err.code==="server_unavailable"?"Unklar, ob der Termin angelegt wurde. Lade die Liste neu und prüfe, bevor du es nochmal versuchst.":err.code==="needs_reauth"?"Die Google-Anmeldung wurde abgebrochen.":"Der Termin konnte nicht angelegt werden. "+(err.message||"");
+  }finally{btn.disabled=false;btn.textContent="Eintragen"}
 });
-$("#theme").addEventListener("click",()=>setTimeout(show,0));
-show();
+if(G)G.onChange(()=>{meta();if(G.state()!=="connected")showState()});
+render();showState();load();
+setInterval(()=>{if(document.visibilityState==="visible")load()},300000);
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")load()});
 })();
 </script>
 </body>
