@@ -102,6 +102,11 @@ input[type=time]{border:1px solid var(--line);background:var(--bg);border-radius
 @media (max-width:600px){.addtask{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.addtask .timepair{grid-column:1/-1}}
 .gopt{display:flex;gap:6px;align-items:center;font-size:13px;color:var(--muted);white-space:nowrap}
 .addtask .gopt{grid-column:1/-1}
+.addtask .until{display:flex;gap:6px;align-items:center;font-size:13px;color:var(--muted);min-width:0}
+.addtask .until input{flex:1;min-width:0}
+.rmark{color:var(--muted);font-weight:400;margin-left:4px}
+.series{background:var(--surface-2,transparent);border:1px solid var(--line);border-radius:10px;padding:10px;display:grid;gap:8px;font-size:13px}
+.series .row{flex-wrap:wrap}
 .gmark{font-size:10.5px;color:var(--good);font-weight:700}
 .time{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--fg);font-variant-numeric:tabular-nums;display:block}
 .overlay{position:fixed;inset:0;background:color-mix(in srgb,var(--fg) 35%,transparent);display:grid;place-items:center;z-index:20;padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
@@ -233,6 +238,11 @@ input[type=time]{border:1px solid var(--line);background:var(--bg);border-radius
           <select id="taskCourse" aria-label="Kurs"></select>
           <input type="date" id="taskDay" aria-label="Tag" required>
           <span class="timepair"><input type="time" id="taskFrom" aria-label="Von (optional)" title="Von (optional)"><span class="muted">–</span><input type="time" id="taskTo" aria-label="Bis (optional)" title="Bis (optional)"></span>
+          <select id="taskRep" aria-label="Wiederholen">
+            <option value="">Einmalig</option><option value="daily">Täglich</option><option value="weekdays">Werktags (Mo–Fr)</option>
+            <option value="weekly">Wöchentlich</option><option value="biweekly">Alle 2 Wochen</option><option value="monthly">Monatlich</option>
+          </select>
+          <label class="until" for="taskUntil" id="taskUntilWrap" hidden><span>bis</span><input type="date" id="taskUntil" aria-label="Wiederholen bis"></label>
           <label class="gopt" for="taskG" id="taskGWrap"><input type="checkbox" id="taskG"> Google Kalender</label>
           <button class="btn primary" type="submit">Eintragen</button>
         </form>
@@ -486,7 +496,7 @@ function renderCal(){
           "aria-label":fmtDay(d)+(ex.length?", Klausur":"")+(tasks.length?`, ${tasks.length} Einträge`:""), onclick:()=>selectDay(d)},
         el("span",{class:"num"}, String(dt.getDate())),
         ex.map(examChip),
-        tasks.slice(0,max).map(x=>{ const c = courseById(x.courseId); return el("div",{class:"mtask"+(x.done?" done":""),style:`--cc:${ccolor(c)}`,title:(x.from?timeLabel(x)+" ":"")+(c?short(c)+": ":"")+x.title}, (x.from?x.from+" ":"")+x.title); }),
+        tasks.slice(0,max).map(x=>{ const c = courseById(x.courseId); return el("div",{class:"mtask"+(x.done?" done":""),style:`--cc:${ccolor(c)}`,title:(x.from?timeLabel(x)+" ":"")+(c?short(c)+": ":"")+x.title}, (x.from?x.from+" ":"")+(x.sid?"↻ ":"")+x.title); }),
         tasks.length>max ? el("div",{class:"more"}, `+${tasks.length-max} mehr`) : null
       ));
     }
@@ -499,12 +509,12 @@ function renderTask(x){
   const c = courseById(x.courseId);
   return el("div",{class:"task"+(x.done?" done":""), style:`--cc:${ccolor(c)}`},
     el("input",{type:"checkbox", id:"tk-"+x.id, checked:!!x.done, "aria-label":"Erledigt", onchange:e=>patch("tasks",x.id,{done:e.target.checked})}),
-    el("label",{class:"t", for:"tk-"+x.id}, x.from ? el("span",{class:"time"}, timeLabel(x)) : null, x.title, (c||x.gcal) ? el("div",{class:"muted",style:"font-size:11px"}, c ? short(c) : null, x.gcal ? el("span",{class:"gmark"}, (c?" · ":"")+"im Kalender") : null) : null),
+    el("label",{class:"t", for:"tk-"+x.id}, x.from ? el("span",{class:"time"}, timeLabel(x)) : null, x.title, x.sid ? el("span",{class:"rmark",title:"Wiederholt sich "+(REP[x.srule]?.label||"")},"↻") : null, (c||x.gcal||x.gseries) ? el("div",{class:"muted",style:"font-size:11px"}, c ? short(c) : null, (x.gcal||x.gseries) ? el("span",{class:"gmark"}, (c?" · ":"")+"im Kalender") : null) : null),
     el("div",{class:"acts"},
       el("button",{class:"icon", title:"Bearbeiten", "aria-label":"Bearbeiten", onclick:()=>openEdit(x.id)},"✎"),
       el("button",{class:"icon mv", title:"Einen Tag früher", "aria-label":"Einen Tag früher", onclick:()=>moveTask(x,-1)},"←"),
       el("button",{class:"icon mv", title:"Einen Tag später", "aria-label":"Einen Tag später", onclick:()=>moveTask(x,1)},"→"),
-      el("button",{class:"icon", title:"Löschen", "aria-label":"Löschen", onclick:()=>removeTask(x)},"✕")));
+      el("button",{class:"icon", title:"Löschen", "aria-label":"Löschen", onclick:()=>x.sid ? (editConfirm=true, editId=x.id, renderEdit()) : removeTask(x)},"✕")));
 }
 function renderDayView(){
   const box = $("#dayview");
@@ -600,10 +610,106 @@ function renderIdeas(){
 // ---------- Formulare & Navigation ----------
 $("#taskG").checked = !!ls.get("sc.gcal", false);
 $("#taskG").addEventListener("change", e=>ls.set("sc.gcal", e.target.checked));
+// ---------- Wiederholungen ----------
+// Jeder Termin einer Serie ist ein eigener Eintrag (eigener Haken, verschiebbar); sid verbindet sie.
+const REP = {
+  daily:   { label:"täglich",          rr:"FREQ=DAILY" },
+  weekdays:{ label:"werktags",         rr:"FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR" },
+  weekly:  { label:"wöchentlich",      rr:"FREQ=WEEKLY" },
+  biweekly:{ label:"alle 2 Wochen",    rr:"FREQ=WEEKLY;INTERVAL=2" },
+  monthly: { label:"monatlich",        rr:"FREQ=MONTHLY" },
+};
+const MAX_REP = 150;
+function seriesDates(kind, start, until){
+  const out = [], s = parse(start), end = parse(until);
+  if (kind==="monthly"){
+    for (let k=0; out.length<MAX_REP; k++){
+      const d = new Date(s.getFullYear(), s.getMonth()+k, s.getDate());
+      if (d > end) break;
+      if (d.getDate()===s.getDate()) out.push(iso(d));   // z. B. 31. fällt in kurzen Monaten aus, wie bei Google
+    }
+    return out;
+  }
+  const step = kind==="weekly" ? 7 : kind==="biweekly" ? 14 : 1;
+  for (let d = s; d <= end && out.length<MAX_REP; d = addDays(d, step)){
+    if (kind==="weekdays" && d!==s && (d.getDay()===0 || d.getDay()===6)) continue;
+    out.push(iso(d));
+  }
+  return out;
+}
+function rrule(kind, until, timed){
+  let u;
+  if (timed){ const d = parse(until); d.setHours(23,59,59); u = d.toISOString().replace(/[-:]/g,"").replace(/\.\d+/,""); }
+  else u = until.replace(/-/g,"");
+  return ["RRULE:"+REP[kind].rr+";UNTIL="+u];
+}
+const seriesOf = x => x.sid ? state.tasks.filter(t=>t.sid===x.sid).sort((a,b)=>a.date.localeCompare(b.date)) : [];
+async function saveMany(items){
+  for (const {id,data} of items){ const i = state.tasks.findIndex(x=>x.id===id); if (i>=0) state.tasks[i] = {id,...data}; else state.tasks.push({id,...data}); }
+  render();
+  if (!backend) return;
+  for (const {id,data} of items){ try { await backend.set("tasks", id, data); } catch(e){ status(storeErr(e)); return; } }
+}
+async function removeMany(list){
+  const ids = new Set(list.map(x=>x.id));
+  state.tasks = state.tasks.filter(x=>!ids.has(x.id)); render();
+  if (!backend) return;
+  for (const id of ids){ try { await backend.del("tasks", id); } catch(e){ status(storeErr(e)); return; } }
+}
+// Google-Serie: ein einziger wiederkehrender Termin; Ende verschieben oder ganz löschen
+async function gSeriesSet(x, patchIn){
+  if (!mcp || !x.gseries) return x.gseries||"";
+  try { await gcall("update_event", { eventId:x.gseries, notificationLevel:"NONE", ...patchIn }); return x.gseries; }
+  catch(e){ status(gcErr(e)); return x.gseries; }
+}
+async function gSeriesDelete(x){
+  if (!mcp || !x.gseries) return;
+  try { await gcall("delete_event", { eventId:x.gseries, notificationLevel:"NONE" }); }
+  catch(e){ if (e?.code!=="tool_error") status(gcErr(e)); }
+}
+// Nach dem Löschen: Ende und ausgelassene Tage der Google-Serie an die verbliebenen Einträge anpassen
+async function gResync(ref){
+  if (!ref.gseries || !mcp) return;
+  const left = state.tasks.filter(t=>t.sid===ref.sid);
+  if (!left.length){ await gSeriesDelete(ref); return; }
+  const origs = new Set(left.map(t=>t.sorig||t.date));
+  const last = [...origs].sort().pop();
+  const gone = seriesDates(ref.srule, ref.sstart, last).filter(d=>!origs.has(d));
+  const ex = gone.map(d=> ref.sfrom ? `EXDATE;TZID=${TZ}:${d.replace(/-/g,"")}T${ref.sfrom.replace(":","")}00` : `EXDATE;VALUE=DATE:${d.replace(/-/g,"")}`);
+  await gSeriesSet(ref, { recurrenceData:[...rrule(ref.srule, last, !!ref.sfrom), ...ex] });
+}
+async function removeSeries(x, scope){
+  const all = seriesOf(x);
+  const list = scope==="one" ? [x] : scope==="after" ? all.filter(t=>t.date>=x.date) : all;
+  await removeMany(list);
+  await gResync(x);
+}
+const defaultUntil = d => iso(addDays(parse(d), 7*12));
+$("#taskRep").addEventListener("change", e=>{
+  $("#taskUntilWrap").hidden = !e.target.value;
+  if (e.target.value && !$("#taskUntil").value) $("#taskUntil").value = defaultUntil($("#taskDay").value || iso(today()));
+});
+
 $("#taskForm").addEventListener("submit", async e=>{ e.preventDefault();
   const title = $("#taskTitle").value.trim(), date = $("#taskDay").value; if (!title || !date) return;
   const from = $("#taskFrom").value, to = from ? $("#taskTo").value : "";
+  const kind = $("#taskRep").value, until = $("#taskUntil").value;
   const data = { title, courseId:$("#taskCourse").value, date, from, to, done:false, created:Date.now(), gcal:"" };
+  if (kind){
+    if (!until || until < date){ status("Wähle bei „bis“ ein Datum ab dem ersten Termin."); return; }
+    const dates = seriesDates(kind, date, until);
+    const sid = newId();
+    const base = { ...data, sid, srule:kind, suntil:until, sstart:date, sfrom:from, sto:to, gseries:"" };
+    if ($("#taskG").checked && mcp){
+      const c = courseById(data.courseId);
+      try { base.gseries = evId(await gcall("create_event", { ...evInput({ summary:(c?short(c)+": ":"")+title, date, from, to }), recurrenceData:rrule(kind, dates[dates.length-1], !!from), notificationLevel:"NONE" })); }
+      catch(err){ status(gcErr(err)); }
+    } else if ($("#taskG").checked) status("Google Kalender ist hier nicht verfügbar. Die Serie steht nur im Lernplan.");
+    $("#taskTitle").value = ""; $("#taskFrom").value = ""; $("#taskTo").value = ""; $("#taskRep").value = ""; $("#taskUntilWrap").hidden = true; $("#taskTitle").focus();
+    await saveMany(dates.map(d=>({ id:newId(), data:{ ...base, date:d, sorig:d } })));
+    if (dates.length >= MAX_REP) status(`Eine Serie hat höchstens ${MAX_REP} Termine. Der letzte ist am ${fmtShort(parse(dates[dates.length-1]))}.`);
+    return;
+  }
   $("#taskTitle").value = ""; $("#taskFrom").value = ""; $("#taskTo").value = ""; $("#taskTitle").focus();
   const id = newId();
   if ($("#taskG").checked){ await save("tasks", id, data); const g = await syncTask(data, true); if (g) await patch("tasks", id, { gcal:g }); }
@@ -726,8 +832,19 @@ function renderEdit(){
       const title = f.querySelector("#ed-title").value.trim(); if (!title) return;
       const from = f.querySelector("#ed-from").value, to = from ? f.querySelector("#ed-to").value : "";
       const next = { ...x, title, courseId:course.value, date:f.querySelector("#ed-date").value || x.date, from, to, done:f.querySelector("#ed-done").checked };
-      const want = f.querySelector("#ed-g").checked, changed = ["title","courseId","date","from","to"].some(k=>(next[k]||"")!==(x[k]||""));
       const sb = f.querySelector("[type=submit]"); sb.disabled = true; sb.textContent = "Speichert…";
+      if (x.sid){
+        const allNext = f.querySelector("#ed-all")?.checked;
+        if (allNext){
+          const keys = { title:next.title, courseId:next.courseId, from:next.from, to:next.to, sfrom:next.from, sto:next.to };
+          const later = seriesOf(x).filter(t=>t.id!==x.id && t.date>=x.date);
+          const { id:_i, ...own } = { ...next, ...keys };
+          await saveMany([{ id:x.id, data:own }, ...later.map(t=>{ const { id, ...r } = t; return { id, data:{ ...r, ...keys } }; })]);
+          if (x.gseries){ const c = courseById(next.courseId); await gSeriesSet(x, evInput({ summary:(c?short(c)+": ":"")+next.title, date:x.sstart, from:next.from, to:next.to })); }
+        } else { const { id:_, ...rest } = next; await save("tasks", x.id, rest); }
+        closeEdit(); return;
+      }
+      const want = f.querySelector("#ed-g").checked, changed = ["title","courseId","date","from","to"].some(k=>(next[k]||"")!==(x[k]||""));
       if (want && (!x.gcal || changed)) next.gcal = await syncTask(next, true);
       else if (!want && x.gcal) next.gcal = await syncTask(x, false);
       const { id:_, ...rest } = next; await save("tasks", x.id, rest);
@@ -740,10 +857,20 @@ function renderEdit(){
       el("label",{}, "Von (optional)", el("input",{type:"time", id:"ed-from", value:x.from||""})),
       el("label",{}, "Bis (optional)", el("input",{type:"time", id:"ed-to", value:x.to||""}))),
     el("label",{style:"display:flex;gap:8px;align-items:center;font-weight:400"}, el("input",{type:"checkbox", id:"ed-done", checked:!!x.done}), "Erledigt"),
-    mcp ? el("label",{style:"display:flex;gap:8px;align-items:center;font-weight:400"}, el("input",{type:"checkbox", id:"ed-g", checked:!!x.gcal}), "Im Google Kalender eintragen") : el("input",{type:"hidden", id:"ed-g"}),
-    !mcp ? el("a",{class:"btn small", href:gTemplate(x), target:"_blank", rel:"noopener", style:"justify-self:start"}, "In Google Kalender anlegen ↗") : null,
+    x.sid ? el("div",{class:"series"},
+        el("div",{}, el("strong",{},"↻ Serie: "), `${REP[x.srule]?.label||"wiederholt"} vom ${fmtShort(parse(x.sstart))} bis ${fmtShort(parse(x.suntil))}${parse(x.suntil).getFullYear()}`, el("span",{class:"muted"}, ` · noch ${seriesOf(x).filter(t=>t.date>=iso(today())).length} Termine`)),
+        el("label",{style:"display:flex;gap:8px;align-items:center;font-weight:400"}, el("input",{type:"checkbox", id:"ed-all"}), "Thema, Kurs und Uhrzeit auch für alle folgenden Termine ändern"),
+        x.gseries ? el("div",{class:"muted"}, "Im Google Kalender steht die Serie als ein wiederkehrender Termin. Änderungen für alle folgenden und gelöschte Termine werden dort übernommen, ein einzeln verschobener Tag nicht.") : null)
+    : mcp ? el("label",{style:"display:flex;gap:8px;align-items:center;font-weight:400"}, el("input",{type:"checkbox", id:"ed-g", checked:!!x.gcal}), "Im Google Kalender eintragen") : el("input",{type:"hidden", id:"ed-g"}),
+    !mcp && !x.sid ? el("a",{class:"btn small", href:gTemplate(x), target:"_blank", rel:"noopener", style:"justify-self:start"}, "In Google Kalender anlegen ↗") : null,
     el("div",{class:"row",style:"justify-content:space-between"},
-      editConfirm
+      editConfirm && x.sid
+        ? el("span",{class:"confirm",style:"flex-wrap:wrap"},"Löschen:",
+            el("button",{type:"button",class:"btn small",onclick:()=>{closeEdit();removeSeries(x,"one");}},"Nur diesen"),
+            el("button",{type:"button",class:"btn small",onclick:()=>{closeEdit();removeSeries(x,"after");}},"Ab hier alle"),
+            el("button",{type:"button",class:"btn small",onclick:()=>{closeEdit();removeSeries(x,"all");}},"Ganze Serie"),
+            el("button",{type:"button",class:"btn small",onclick:()=>{editConfirm=false;renderEdit();}},"Abbrechen"))
+      : editConfirm
         ? el("span",{class:"confirm"},"Wirklich löschen?", el("button",{type:"button",class:"btn small",onclick:()=>{removeTask(x);closeEdit();}},"Ja"), el("button",{type:"button",class:"btn small",onclick:()=>{editConfirm=false;renderEdit();}},"Nein"))
         : el("button",{type:"button",class:"icon",onclick:()=>{editConfirm=true;renderEdit();}},"Löschen"),
       el("span",{class:"row"},

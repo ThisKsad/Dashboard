@@ -100,7 +100,10 @@ h2{font-family:var(--f-display);font-weight:700;font-size:20px;margin:0}
 .ev.past{opacity:.5}
 .ag-msg{background:var(--surface-2);border-radius:var(--r);padding:12px 14px;font-size:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .ag-meta{font-family:var(--f-mono);font-size:12px;color:var(--muted)}
-.ag-form{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) auto auto;gap:8px;background:var(--surface-2);padding:12px;border-radius:var(--r)}
+.ag-form{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) auto auto;gap:8px;background:var(--surface-2);padding:12px;border-radius:var(--r)}
+.ag-form select{font:inherit;padding:9px 10px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--fg);min-width:0;width:100%}
+.ag-form .until{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);min-width:0}
+.ev .rep{color:var(--muted);font-weight:400;font-size:12px;margin-left:4px}
 .ag-form input{font:inherit;padding:9px 10px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--fg);min-width:0;width:100%}
 .ag-form input:focus{outline:2px solid var(--accent);outline-offset:1px}
 .ag-form .note{grid-column:1/-1;font-size:13px;color:var(--muted);margin:0}
@@ -165,6 +168,11 @@ h2{font-family:var(--f-display);font-weight:700;font-size:20px;margin:0}
       <input id="ag-date" type="date" required aria-label="Datum">
       <input id="ag-from" type="time" aria-label="Von (optional)" title="Von (optional)">
       <input id="ag-to" type="time" aria-label="Bis (optional)" title="Bis (optional)">
+      <select id="ag-rep" aria-label="Wiederholen">
+        <option value="">Einmalig</option><option value="daily">Täglich</option><option value="weekdays">Werktags (Mo–Fr)</option>
+        <option value="weekly">Wöchentlich</option><option value="biweekly">Alle 2 Wochen</option><option value="monthly">Monatlich</option><option value="yearly">Jährlich</option>
+      </select>
+      <label class="until" for="ag-until" id="ag-untilwrap" hidden><span>bis</span><input id="ag-until" type="date" aria-label="Wiederholen bis (leer = ohne Ende)" title="Leer lassen = ohne Ende"></label>
       <button class="btn primary" type="submit" id="ag-save">Eintragen</button>
       <button class="btn" type="button" id="ag-cancel">Abbrechen</button>
       <p class="note" id="ag-note">Ohne Uhrzeit wird es ein ganztägiger Termin. Er landet in deinem Google Kalender und damit auch im Apple Kalender.</p>
@@ -327,6 +335,13 @@ function msg(text,btn){const m=$("#ag-msg");if(!text){m.hidden=true;return}m.rep
 const connectBtn=label=>el("button",{class:"btn primary",type:"button",onclick:async()=>{try{await G.connect();load()}catch(e){msg("Die Google-Anmeldung wurde abgebrochen. Erlaube Pop-ups für diese Seite und versuch es nochmal.",connectBtn(label))}}},label);
 const evStart=e=>e.start&&e.start.dateTime?new Date(e.start.dateTime):e.start&&e.start.date?parseYmd(e.start.date):null;
 const evEnd=e=>e.end&&e.end.dateTime?new Date(e.end.dateTime):e.end&&e.end.date?parseYmd(e.end.date):null;
+const RR={daily:"FREQ=DAILY",weekdays:"FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR",weekly:"FREQ=WEEKLY",biweekly:"FREQ=WEEKLY;INTERVAL=2",monthly:"FREQ=MONTHLY",yearly:"FREQ=YEARLY"};
+// Serienende: ganztägig als Datum, mit Uhrzeit als UTC-Zeitpunkt am Ende des Tages
+function rrule(kind,until,allDay){
+  let r="RRULE:"+RR[kind];
+  if(until){if(allDay)r+=";UNTIL="+until.replace(/-/g,"");else{const[y,m,d]=until.split("-").map(Number);r+=";UNTIL="+new Date(y,m-1,d,23,59,59).toISOString().replace(/[-:]/g,"").replace(/\.\d+/,"")}}
+  return[r];
+}
 const declined=e=>(e.attendees||[]).some(a=>a.self&&a.responseStatus==="declined");
 function render(){
   const box=$("#ag-days");
@@ -351,7 +366,7 @@ function render(){
       el("h3",{},name,el("span",{},k===tk||k===mk?WD[d.getDay()]+" "+pad(d.getDate())+"."+pad(d.getMonth()+1)+".":"")),
       list.map(({e,s,en,allDay,past})=>el("a",{class:"ev"+(past?" past":""),href:e.htmlLink||"https://calendar.google.com",target:"_blank",rel:"noopener",title:"In Google Kalender öffnen"},
         el("span",{class:"t"+(allDay?" all":"")},allDay?"ganztägig":hm(s)),
-        el("span",{class:"s"},e.summary||"(ohne Titel)",(!allDay&&en)||e.location?el("span",{class:"l"},[!allDay&&en?"bis "+hm(en):null,e.location||null].filter(Boolean).join(" · ")):null))));
+        el("span",{class:"s"},e.summary||"(ohne Titel)",e.recurringEventId?el("span",{class:"rep",title:"Wiederholt sich"},"↻"):null,(!allDay&&en)||e.location?el("span",{class:"l"},[!allDay&&en?"bis "+hm(en):null,e.location||null].filter(Boolean).join(" · ")):null))));
   }));
 }
 function meta(){$("#ag-meta").replaceChildren(stamp?"Stand "+hm(new Date(stamp))+" · ":"",G&&G.state()!=="off"?el("button",{class:"linkbtn",type:"button",onclick:()=>{G.disconnect();events=null;render();meta();showState()}},"Google trennen"):"")}
@@ -378,6 +393,8 @@ async function load(){
 document.querySelectorAll("#agenda .seg button").forEach(b=>b.addEventListener("click",()=>{days=+b.dataset.days;store.set("ag-days",days);render();load()}));
 const form=$("#ag-form");
 $("#ag-add").addEventListener("click",()=>{form.hidden=!form.hidden;if(!form.hidden){if(!$("#ag-date").value)$("#ag-date").value=ymd(today0());$("#ag-title").focus()}});
+const NOTE=$("#ag-note").textContent;
+$("#ag-rep").addEventListener("change",e=>{$("#ag-untilwrap").hidden=!e.target.value});
 $("#ag-cancel").addEventListener("click",()=>{form.hidden=true});
 form.addEventListener("submit",async e=>{
   e.preventDefault();
@@ -385,11 +402,13 @@ form.addEventListener("submit",async e=>{
   const inp={summary:title,timeZone:TZ};
   if(from){if(!to||to<=from){const[h,m]=from.split(":").map(Number);const v=Math.min(1439,h*60+m+60);to=pad(Math.floor(v/60))+":"+pad(v%60)}inp.startTime=date+"T"+from+":00";inp.endTime=date+"T"+to+":00"}
   else{inp.allDay=true;inp.startTime=date+"T00:00:00";inp.endTime=ymd(addD(parseYmd(date),1))+"T00:00:00"}
+  const kind=$("#ag-rep").value,until=$("#ag-until").value;
+  if(kind){if(until&&until<date){$("#ag-note").textContent="Das Enddatum der Wiederholung liegt vor dem ersten Termin.";return}inp.recurrenceData=rrule(kind,until,!!inp.allDay)}
   const btn=$("#ag-save");btn.disabled=true;btn.textContent="Trägt ein…";
   try{
     if(G.state()!=="connected")await G.connect();
     await G.create(inp);
-    form.reset();form.hidden=true;load();
+    form.reset();$("#ag-untilwrap").hidden=true;$("#ag-note").textContent=NOTE;form.hidden=true;load();
   }catch(err){
     $("#ag-note").textContent=err.code==="server_unavailable"?"Unklar, ob der Termin angelegt wurde. Lade die Liste neu und prüfe, bevor du es nochmal versuchst.":err.code==="needs_reauth"?"Die Google-Anmeldung wurde abgebrochen.":"Der Termin konnte nicht angelegt werden. "+(err.message||"");
   }finally{btn.disabled=false;btn.textContent="Eintragen"}

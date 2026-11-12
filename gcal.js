@@ -62,6 +62,7 @@ window.GCal = (() => {
     if (i.summary != null) o.summary = i.summary;
     if (i.location != null) o.location = i.location;
     if (i.description != null) o.description = i.description;
+    if (i.recurrenceData) o.recurrence = i.recurrenceData;   // z. B. ["RRULE:FREQ=WEEKLY;UNTIL=…"]
     if (i.startTime){
       const tz = i.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone;
       o.start = i.allDay ? { date: i.startTime.slice(0,10), dateTime: null } : { dateTime: i.startTime, timeZone: tz, date: null };
