@@ -84,6 +84,12 @@ header.top{display:flex;justify-content:space-between;align-items:flex-end;gap:1
 .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .chip{border:1px solid var(--line);background:var(--bg);border-radius:999px;padding:4px 12px;font-size:13px;font-weight:700}
 .chip[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.chip.custom{display:inline-flex;align-items:center;gap:4px;padding:2px 10px 2px 6px;cursor:text}
+.chip.custom input{width:44px;border:0;background:transparent;font:inherit;font-weight:700;text-align:right;padding:2px 0;color:inherit;-moz-appearance:textfield}
+.chip.custom input::-webkit-inner-spin-button,.chip.custom input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+.chip.custom input:focus{outline:none}
+.chip.custom:focus-within{outline:2px solid var(--accent);outline-offset:2px}
+.chip.custom.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
 .seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden}
 .seg button{border:0;background:var(--bg);padding:4px 12px;font-size:13px;font-weight:700}
 .seg button[aria-pressed="true"]{background:var(--accent);color:var(--bg)}
@@ -251,6 +257,7 @@ input[type=time]{border:1px solid var(--line);background:var(--bg);border-radius
               <button class="chip" data-min="25" aria-pressed="true">25 min</button>
               <button class="chip" data-min="45">45 min</button>
               <button class="chip" data-min="60">60 min</button>
+              <label class="chip custom" id="customWrap" for="customMin"><input type="number" id="customMin" min="1" max="240" step="1" inputmode="numeric" placeholder="eigene" aria-label="Eigene Dauer in Minuten"> min</label>
             </div>
             <div class="row">
               <button class="btn primary" id="tStart">Start</button>
@@ -767,11 +774,27 @@ $("#wToday").onclick = ()=>{ state.offset=0; state.sel=iso(today()); $("#taskDay
 let T = ls.get("sc.timer", null);
 let dur = ls.get("sc.dur", 25), tick = null;
 const ring = $("#ring"), CIRC = 276.46;
-document.querySelectorAll("#presets .chip").forEach(b=>{
-  b.setAttribute("aria-pressed", String(+b.dataset.min===dur));
-  b.onclick = ()=>{ if (T) return; dur = +b.dataset.min; ls.set("sc.dur",dur);
-    document.querySelectorAll("#presets .chip").forEach(x=>x.setAttribute("aria-pressed", String(x===b))); drawTimer(); };
+const PRESETS = [15,25,45,60];
+function markDur(){
+  document.querySelectorAll("#presets button.chip").forEach(x=>x.setAttribute("aria-pressed", String(+x.dataset.min===dur)));
+  const custom = !PRESETS.includes(dur);
+  $("#customWrap").classList.toggle("on", custom);
+  if (custom && document.activeElement!==$("#customMin")) $("#customMin").value = dur;
+  if (!custom && document.activeElement!==$("#customMin")) $("#customMin").value = "";
+}
+document.querySelectorAll("#presets button.chip").forEach(b=>{
+  b.onclick = ()=>{ if (T) return; dur = +b.dataset.min; ls.set("sc.dur",dur); markDur(); drawTimer(); };
 });
+function applyCustom(){
+  if (T) return;
+  const v = Math.round(+$("#customMin").value);
+  if (!v) { markDur(); return; }
+  dur = Math.min(240, Math.max(1, v)); ls.set("sc.dur",dur); markDur(); drawTimer();
+}
+$("#customMin").addEventListener("input", ()=>{ const v = Math.round(+$("#customMin").value); if (v>=1 && v<=240 && !T){ dur = v; ls.set("sc.dur",dur); document.querySelectorAll("#presets button.chip").forEach(x=>x.setAttribute("aria-pressed","false")); $("#customWrap").classList.add("on"); drawTimer(); } });
+$("#customMin").addEventListener("change", applyCustom);
+$("#customMin").addEventListener("keydown", e=>{ if (e.key==="Enter"){ e.preventDefault(); applyCustom(); $("#customMin").blur(); } });
+markDur();
 $("#tCourse").addEventListener("change", e=>ls.set("sc.course", e.target.value));
 const elapsedMin = () => T ? (Date.now()-T.start)/60000 : 0;
 function drawTimer(){
@@ -779,7 +802,7 @@ function drawTimer(){
   $("#clock").textContent = pad(Math.floor(left/60))+":"+pad(Math.floor(left%60));
   ring.style.strokeDashoffset = String(CIRC*(1-left/total));
   $("#tStart").hidden = !!T; $("#tStop").hidden = !T; $("#tCancel").hidden = !T;
-  $("#tCourse").disabled = !!T;
+  $("#tCourse").disabled = !!T; $("#customMin").disabled = !!T;
   if (T){ const c = courseById(T.course); $("#timerHint").textContent = `Läuft${c?": "+short(c):""}. Handy weg.`; }
   if (T && left<=0) finish(true);
 }
