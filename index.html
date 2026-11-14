@@ -66,6 +66,18 @@ h2{font-family:var(--f-display);font-weight:700;font-size:20px;margin:0}
 .desc{color:var(--muted);font-size:13.5px}
 .host{font-family:var(--f-mono);font-size:11.5px;color:var(--muted);opacity:.85;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tag{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--cat);border:1px solid color-mix(in srgb,var(--cat) 40%,transparent);border-radius:999px;padding:0 7px;align-self:flex-start;margin-top:4px}
+.hide{position:absolute;top:8px;right:8px;width:28px;height:28px;border-radius:50%;border:1px solid var(--line);background:var(--surface-2);color:var(--muted);cursor:pointer;display:grid;place-items:center;opacity:0;transition:opacity .12s ease}
+.hide svg{width:15px;height:15px}
+.tile:hover .hide,.tile:focus-within .hide,.hide:focus-visible{opacity:1}
+.hide:hover{color:var(--fg);border-color:var(--fg)}
+@media (hover:none){.hide{opacity:.75}}
+.tile.has-hide .txt{padding-right:22px}
+#hidden-sec .tile{opacity:.7}
+#hidden-sec .tile:hover{opacity:1}
+.unhide{align-self:flex-start;margin-top:6px;font:inherit;font-size:12px;font-weight:700;cursor:pointer;border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:999px;padding:3px 10px}
+.unhide:hover{border-color:var(--accent)}
+.sec-head .btn.small{padding:5px 11px;font-size:13px;margin-left:auto}
+#show-hidden[aria-pressed="true"]{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
 .del{position:absolute;top:8px;right:8px;width:26px;height:26px;border-radius:50%;border:1px solid var(--line);background:var(--surface-2);color:var(--muted);cursor:pointer;font-size:14px;line-height:1}
 .del:hover{color:var(--fg);border-color:var(--fg)}
 
@@ -146,6 +158,7 @@ h2{font-family:var(--f-display);font-weight:700;font-size:20px;margin:0}
     </div>
     <div class="tools">
       <label class="search" for="q"><input id="q" type="search" placeholder="Suchen und Enter drücken" autocomplete="off"><kbd>/</kbd></label>
+      <button class="btn" id="show-hidden" type="button" aria-pressed="false" aria-controls="hidden-sec" hidden>Ausgeblendet</button>
       <button class="btn" id="theme" type="button">Dunkel</button>
     </div>
   </header>
@@ -184,6 +197,12 @@ h2{font-family:var(--f-display);font-weight:700;font-size:20px;margin:0}
   <div class="maincol">
 
   <main id="groups" style="display:flex;flex-direction:column;gap:32px"></main>
+
+  <section id="hidden-sec" hidden aria-labelledby="hid-h">
+    <div class="sec-head"><h2 id="hid-h">Ausgeblendet</h2><span class="count" id="hid-count"></span><button class="btn small" type="button" id="unhide-all">Alle einblenden</button></div>
+    <p class="hint">Diese Kacheln stehen nicht mehr in deinen Gruppen. Mit „Einblenden“ kommen sie an ihren alten Platz zurück.</p>
+    <div class="grid" id="hidden-grid"></div>
+  </section>
 
   <section id="own">
     <div class="sec-head"><h2>Eigene Links</h2><span class="count" id="own-count"></span></div>
@@ -237,6 +256,16 @@ const GROUPS=[
 const $=s=>document.querySelector(s);
 const store={get(k,f){try{const v=localStorage.getItem(k);return v?JSON.parse(v):f}catch(e){return f}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
 let own=store.get("own-links",[]);
+/* Ausblenden: gemerkt wird die Adresse. h:1 im Eintrag = standardmäßig ausgeblendet, bis du es einblendest. */
+let hiddenSet=new Set(store.get("hidden-links",[])),shownSet=new Set(store.get("shown-links",[]));
+const isHidden=it=>hiddenSet.has(it.u)||(it.h&&!shownSet.has(it.u));
+function setHidden(it,hide){
+  if(hide){hiddenSet.add(it.u);shownSet.delete(it.u)}else{hiddenSet.delete(it.u);if(it.h)shownSet.add(it.u)}
+  store.set("hidden-links",[...hiddenSet]);store.set("shown-links",[...shownSet]);
+  renderGroups();applyFilter();
+}
+let showHidden=false;
+const EYE_OFF='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3l18 18M10.6 5.1A10 10 0 0 1 12 5c6 0 9.5 7 9.5 7a17 17 0 0 1-3.2 4M6.6 6.6C3.9 8.4 2.5 12 2.5 12S6 19 12 19a9.6 9.6 0 0 0 4.4-1.1M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>';
 
 function host(u){try{return new URL(u).host.replace(/^www\./,"")}catch(e){return u}}
 function initials(n){return n.split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0]).join("").toUpperCase()}
@@ -261,17 +290,40 @@ function tile(it,cat,i){
   }
   return a;
 }
+function hideBtn(a,it){
+  const b=document.createElement("button");b.className="hide";b.type="button";b.innerHTML=EYE_OFF;
+  b.title="Ausblenden";b.setAttribute("aria-label",it.n+" ausblenden");
+  b.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();setHidden(it,true)});
+  a.classList.add("has-hide");a.appendChild(b);
+}
+function unhideBtn(a,it){
+  const b=document.createElement("button");b.className="unhide";b.type="button";b.textContent="Einblenden";
+  b.setAttribute("aria-label",it.n+" einblenden");
+  b.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();setHidden(it,false)});
+  a.querySelector(".txt").appendChild(b);
+}
 
 function renderGroups(){
   const g=$("#groups");g.innerHTML="";
+  const hid=[];
   GROUPS.forEach(gr=>{
+    const vis=gr.items.filter(it=>{if(isHidden(it)){hid.push([it,gr.cat]);return false}return true});
+    if(!vis.length)return;
     const s=document.createElement("section");s.className="grp";
     s.innerHTML=`<div class="sec-head"><h2></h2><span class="count"></span></div><div class="grid"></div>`;
     s.querySelector("h2").textContent=gr.title;
-    s.querySelector(".count").textContent=gr.items.length;
-    gr.items.forEach(it=>s.querySelector(".grid").appendChild(tile(it,gr.cat)));
+    s.querySelector(".count").textContent=vis.length;
+    vis.forEach(it=>{const t=tile(it,gr.cat);hideBtn(t,it);s.querySelector(".grid").appendChild(t)});
     g.appendChild(s);
   });
+  const hg=$("#hidden-grid");hg.innerHTML="";
+  hid.forEach(([it,cat])=>{const t=tile(it,cat);unhideBtn(t,it);hg.appendChild(t)});
+  $("#hid-count").textContent=hid.length;
+  const btn=$("#show-hidden");
+  btn.hidden=!hid.length;btn.textContent=`Ausgeblendet (${hid.length})`;
+  if(!hid.length)showHidden=false;
+  btn.setAttribute("aria-pressed",String(showHidden));
+  $("#hidden-sec").hidden=!showHidden;
 }
 function renderOwn(){
   const g=$("#own-grid");g.innerHTML="";
@@ -286,8 +338,10 @@ function applyFilter(){
   document.querySelectorAll(".grp").forEach(s=>s.hidden=q&&!s.querySelector(".tile:not([hidden])"));
 }
 $("#q").addEventListener("input",applyFilter);
+$("#show-hidden").addEventListener("click",()=>{showHidden=!showHidden;renderGroups();applyFilter();if(showHidden)$("#hidden-sec").scrollIntoView({behavior:matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth",block:"start"})});
+$("#unhide-all").addEventListener("click",()=>{GROUPS.forEach(gr=>gr.items.forEach(it=>{hiddenSet.delete(it.u);if(it.h)shownSet.add(it.u)}));store.set("hidden-links",[...hiddenSet]);store.set("shown-links",[...shownSet]);renderGroups();applyFilter()});
 $("#q").addEventListener("keydown",e=>{
-  if(e.key==="Enter"){const t=document.querySelector(".tile:not([hidden])");if(t&&$("#q").value.trim())t.click()}
+  if(e.key==="Enter"){const t=document.querySelector("#groups .tile:not([hidden]),#own .tile:not([hidden])");if(t&&$("#q").value.trim())t.click()}
   if(e.key==="Escape"){$("#q").value="";applyFilter();$("#q").blur()}
 });
 document.addEventListener("keydown",e=>{if(e.key==="/"&&document.activeElement.tagName!=="INPUT"){e.preventDefault();$("#q").focus()}});
