@@ -122,11 +122,34 @@ h2{font-family:var(--f-display);font-weight:700;font-size:20px;margin:0}
 .linkbtn{font:inherit;font-size:12px;color:var(--muted);background:none;border:0;padding:0;cursor:pointer;text-decoration:underline}
 @media (max-width:760px){.ag-form{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.ag-form #ag-title{grid-column:1/-1}}
 
-/* Seitenspalte für den Kalender */
+/* Seitenspalte: Kalender + Posteingang, beide einklappbar */
 .layout{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:32px;align-items:start}
 .maincol{display:flex;flex-direction:column;gap:32px;min-width:0}
-#agenda{grid-column:2;grid-row:1;position:sticky;top:calc(16px + env(safe-area-inset-top,0px));display:flex;flex-direction:column;gap:12px;max-height:calc(100vh - 32px);overflow:auto;padding:16px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);min-width:0}
+.side{grid-column:2;grid-row:1;position:sticky;top:calc(16px + env(safe-area-inset-top,0px));display:flex;flex-direction:column;gap:16px;max-height:calc(100vh - 32px);overflow:auto;min-width:0;scrollbar-width:thin}
+.panel{display:flex;flex-direction:column;gap:12px;padding:16px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);min-width:0;flex:none}
+.panel.collapsed>:not(.ag-head),.panel.collapsed .ag-tools{display:none!important}
+.fold{flex:none;width:30px;height:30px;border-radius:50%;border:1px solid var(--line);background:var(--surface-2);color:var(--muted);cursor:pointer;display:grid;place-items:center;padding:0}
+.fold:hover{color:var(--fg);border-color:var(--accent)}
+.fold:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.fold svg{width:16px;height:16px;transition:transform .15s ease}
+.panel.collapsed .fold svg{transform:rotate(-90deg)}
 .maincol{grid-column:1;grid-row:1}
+
+/* Posteingang (Gmail, nur lesend) */
+.ml-list{display:flex;flex-direction:column}
+.ml{display:flex;flex-direction:column;gap:1px;color:inherit;text-decoration:none;border-radius:8px;padding:7px 8px;margin:0 -8px;min-width:0}
+.ml+.ml{border-top:1px solid var(--line)}
+.ml:hover{background:var(--surface-2)}
+.ml:focus-visible{outline:2px solid var(--accent)}
+.ml .top{display:flex;gap:8px;align-items:baseline;min-width:0}
+.ml .from{font-weight:700;font-size:14px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ml .n{font-family:var(--f-mono);font-size:11px;color:var(--muted)}
+.ml .when{flex:none;font-family:var(--f-mono);font-size:12px;color:var(--accent);font-variant-numeric:tabular-nums}
+.ml .subj{font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ml .snip{font-size:12.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ml-more{font-size:13px;color:var(--muted);margin:6px 0 0}
+.ml-more a{color:var(--accent)}
+.ml-badge{font-family:var(--f-mono);font-size:12px;font-weight:500;color:var(--accent-fg);background:var(--accent);border-radius:999px;padding:1px 8px;margin-left:6px;vertical-align:3px}
 #agenda .ag-days{grid-template-columns:minmax(0,1fr)}
 #agenda .ag-day{padding:0;border:0;border-radius:0;background:none;box-shadow:none;gap:6px}
 #agenda .ag-day+.ag-day{border-top:1px solid var(--line);padding-top:10px}
@@ -134,13 +157,14 @@ h2{font-family:var(--f-display);font-weight:700;font-size:20px;margin:0}
 #agenda .ag-form{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
 #agenda .ag-form #ag-title,#agenda .ag-form #ag-date{grid-column:1/-1}
 #agenda .ag-head .spacer{display:none}
-#agenda .ag-head h2{flex:1}
-#agenda .ag-tools{display:flex;gap:6px;flex-wrap:wrap;width:100%}
-#agenda .ag-tools .btn{padding:6px 11px;font-size:13px}
+.side .ag-head h2{flex:1;min-width:0}
+.side .ag-tools{display:flex;gap:6px;flex-wrap:wrap;width:100%}
+.side .ag-tools .btn{padding:6px 11px;font-size:13px}
 @media (max-width:980px){
   .layout{grid-template-columns:minmax(0,1fr)}
-  #agenda,.maincol{grid-column:1;grid-row:auto}
-  #agenda{position:static;max-height:none;padding:0;background:none;border:0}
+  .side,.maincol{grid-column:1;grid-row:auto}
+  .side{position:static;max-height:none;overflow:visible}
+  #agenda,#mail{padding:0;background:none;border:0}
   #agenda .ag-days{grid-template-columns:repeat(auto-fill,minmax(230px,1fr))}
   #agenda .ag-day{padding:12px;border:1px solid var(--line);background:var(--surface);border-radius:var(--r)}
   #agenda .ag-day+.ag-day{padding-top:12px;border-top:1px solid var(--line)}
@@ -164,9 +188,11 @@ h2{font-family:var(--f-display);font-weight:700;font-size:20px;margin:0}
   </header>
 
   <div class="layout">
-  <aside id="agenda" aria-labelledby="ag-h">
+  <aside class="side" aria-label="Termine und Posteingang">
+  <section class="panel" id="agenda" aria-labelledby="ag-h">
     <div class="ag-head">
       <h2 id="ag-h">Anstehend</h2><span class="ag-meta" id="ag-meta"></span>
+      <button class="fold" type="button" data-panel="agenda" aria-expanded="true" aria-controls="agenda" title="Ein-/ausklappen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
       <span class="spacer"></span>
       <div class="ag-tools">
       <div class="seg" role="group" aria-label="Zeitraum">
@@ -192,6 +218,23 @@ h2{font-family:var(--f-display);font-weight:700;font-size:20px;margin:0}
     </form>
     <div class="ag-msg" id="ag-msg" hidden></div>
     <div class="ag-days" id="ag-days"></div>
+  </section>
+
+  <section class="panel" id="mail" aria-labelledby="ml-h">
+    <div class="ag-head">
+      <h2 id="ml-h"><a href="https://mail.google.com/mail/u/0/#inbox" target="_blank" rel="noopener" style="color:inherit;text-decoration:none" title="Gmail öffnen">Posteingang</a><span class="ml-badge" id="ml-badge" hidden></span></h2>
+      <button class="fold" type="button" data-panel="mail" aria-expanded="true" aria-controls="mail" title="Ein-/ausklappen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+      <div class="ag-tools">
+        <div class="seg" role="group" aria-label="Welche Mails">
+          <button type="button" data-f="primary" title="Nur der Tab „Allgemein“, ohne Werbung und Updates">Allgemein</button><button type="button" data-f="all">Alle ungelesenen</button>
+        </div>
+        <a class="btn" href="https://mail.google.com/mail/u/0/#inbox" target="_blank" rel="noopener">Gmail ↗</a>
+      </div>
+      <span class="ag-meta" id="ml-meta" style="width:100%"></span>
+    </div>
+    <div class="ag-msg" id="ml-msg" hidden></div>
+    <div class="ml-list" id="ml-list"></div>
+  </section>
   </aside>
 
   <div class="maincol">
@@ -220,6 +263,7 @@ h2{font-family:var(--f-display);font-weight:700;font-size:20px;margin:0}
 </div>
 
 <script src="gcal.js"></script>
+<script src="gmail.js"></script>
 <script>
 const GROUPS=[
  {title:"Studium",cat:"--c-study",items:[
@@ -484,6 +528,70 @@ form.addEventListener("submit",async e=>{
 if(G)G.onChange(()=>{meta();if(G.state()!=="connected")showState()});
 render();showState();load();
 setInterval(()=>{if(document.visibilityState==="visible")load()},300000);
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")load()});
+})();
+
+/* Ein-/Ausklappen der Seitenspalte (Zustand bleibt in diesem Browser) */
+document.querySelectorAll(".fold").forEach(b=>{
+  const p=document.getElementById(b.dataset.panel),k="fold-"+b.dataset.panel;
+  const set=c=>{p.classList.toggle("collapsed",c);b.setAttribute("aria-expanded",String(!c));store.set(k,c)};
+  set(store.get(k,false));
+  b.addEventListener("click",()=>set(!p.classList.contains("collapsed")));
+});
+
+/* Posteingang: ungelesene Mails über gmail.js (nur lesend) */
+(()=>{
+const M=window.GMail;
+let data=null,filter=store.get("ml-filter","primary"),stamp=null,busy=false;
+const pad=n=>String(n).padStart(2,"0");
+const hm=d=>pad(d.getHours())+":"+pad(d.getMinutes());
+const WD=["So","Mo","Di","Mi","Do","Fr","Sa"];
+function el(t,a={},...k){const e=document.createElement(t);for(const[n,v]of Object.entries(a)){if(n==="class")e.className=v;else if(n.startsWith("on"))e.addEventListener(n.slice(2),v);else if(v!=null&&v!==false)e.setAttribute(n,v===true?"":v)}for(const c of k.flat())if(c!=null&&c!==false)e.append(c.nodeType?c:document.createTextNode(c));return e}
+function when(d){
+  const t=new Date();t.setHours(0,0,0,0);const y=new Date(t);y.setDate(y.getDate()-1);
+  return d>=t?hm(d):d>=y?"Gestern":WD[d.getDay()]+" "+pad(d.getDate())+"."+pad(d.getMonth()+1)+".";
+}
+function msg(text,btn){const m=$("#ml-msg");if(!text){m.hidden=true;return}m.replaceChildren(el("span",{},text),btn||null);m.hidden=false}
+const connectBtn=label=>el("button",{class:"btn primary",type:"button",onclick:async()=>{
+  try{await M.connect();load()}
+  catch(e){msg(e.code==="no_scope"?"Du hast den Gmail-Zugriff nicht angehakt. Versuch es nochmal und setz das Häkchen bei „E-Mails lesen“.":"Die Google-Anmeldung wurde abgebrochen. Erlaube Pop-ups für diese Seite und versuch es nochmal.",connectBtn(label))}
+}},label);
+function render(){
+  document.querySelectorAll("#mail .seg button").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.f===filter)));
+  const box=$("#ml-list"),badge=$("#ml-badge");
+  if(!data){box.replaceChildren();badge.hidden=true;return}
+  const n=data.totalUnread;badge.hidden=!n;badge.textContent=n>99?"99+":String(n||"");
+  badge.title=n?n+" ungelesene Unterhaltungen im Posteingang":"";
+  if(!data.items.length){box.replaceChildren(el("p",{class:"empty"},filter==="primary"?"Nichts Ungelesenes unter „Allgemein“. 🎉":"Keine ungelesenen Mails im Posteingang. 🎉"));return}
+  box.replaceChildren(...data.items.map(m=>el("a",{class:"ml",href:m.link,target:"_blank",rel:"noopener",title:"In Gmail öffnen"},
+    el("span",{class:"top"},el("span",{class:"from"},m.from,m.count>1?el("span",{class:"n"}," ("+m.count+")"):null),el("span",{class:"when"},when(m.date))),
+    el("span",{class:"subj"},m.subject),
+    m.snippet?el("span",{class:"snip"},m.snippet):null)));
+  if(data.more)box.append(el("p",{class:"ml-more"},"Es gibt noch mehr. ",el("a",{href:"https://mail.google.com/mail/u/0/#search/"+encodeURIComponent("in:inbox is:unread"+(filter==="primary"?" category:primary":"")),target:"_blank",rel:"noopener"},"Alle in Gmail ansehen ↗")));
+}
+function meta(){$("#ml-meta").replaceChildren(stamp?"Stand "+hm(new Date(stamp))+" · ":"",M&&M.state()!=="off"?el("button",{class:"linkbtn",type:"button",onclick:()=>{M.disconnect();data=null;stamp=null;render();meta();showState()}},"Gmail trennen"):"")}
+function showState(){
+  if(!M){msg("Gmail konnte nicht geladen werden.");return}
+  const st=M.state();
+  if(st==="connected")return;
+  if(st==="expired")msg("Die Gmail-Verbindung ist abgelaufen.",connectBtn("Neu verbinden"));
+  else msg("Verbinde Gmail, dann siehst du hier deine ungelesenen Mails. Die Seite kann nur lesen, nichts löschen oder verschieben.",connectBtn("Gmail verbinden"));
+}
+async function load(){
+  if(!M||M.state()!=="connected"){showState();return}
+  if(busy)return;busy=true;
+  try{
+    data=await M.unread({onlyPrimary:filter==="primary"});stamp=Date.now();msg(null);render();meta();
+  }catch(e){
+    if(e.code==="needs_reauth"){showState();return}
+    if(e.code==="api_disabled"){msg("Die Gmail-API ist im Google-Cloud-Projekt noch nicht aktiviert. Aktivier sie einmal, dann klappt es.",el("a",{class:"btn",href:"https://console.cloud.google.com/apis/library/gmail.googleapis.com",target:"_blank",rel:"noopener"},"Aktivieren ↗"));return}
+    msg(data?"Gmail gerade nicht erreichbar, du siehst den letzten Stand.":"Gmail gerade nicht erreichbar.",el("button",{class:"btn",type:"button",onclick:load},"Neu laden"));
+  }finally{busy=false}
+}
+document.querySelectorAll("#mail .seg button").forEach(b=>b.addEventListener("click",()=>{filter=b.dataset.f;store.set("ml-filter",filter);data=null;render();load()}));
+if(M)M.onChange(()=>{meta();if(M.state()!=="connected")showState()});
+render();meta();showState();load();
+setInterval(()=>{if(document.visibilityState==="visible")load()},180000);
 document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")load()});
 })();
 </script>
